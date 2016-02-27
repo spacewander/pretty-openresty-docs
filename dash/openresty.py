@@ -318,6 +318,17 @@ if __name__ == '__main__':
         worker.join()
         entries.extend(worker.entries)
         resources |= worker.resources
-
     download_resources(resources)
-    insert_entries(entries)
+
+    # mark entries have the same names
+    entry_used_time = {}
+    for entry in entries:
+        entry_used_time[entry.name] = entry_used_time.setdefault(entry.name, 0) + 1
+    new_entries = []
+    for entry in entries:
+        if entry_used_time[entry.name] > 1:
+            name = entry.name + '(%s)' % entry.path[2:entry.path.find('.html')]
+        else:
+            name = entry.name
+        new_entries.append(Entry(name=name, type=entry.type, path=entry.path))
+    insert_entries(new_entries)
