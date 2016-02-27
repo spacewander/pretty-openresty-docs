@@ -4,15 +4,20 @@
 Build dash docset for OpenResty.
 See https://kapeli.com/docsets for how to build docset.
 """
+from __future__ import unicode_literals
 from collections import namedtuple
+from shutil import rmtree
+from sys import stdout
+from threading import Thread, Lock
 import codecs
+import logging
 import os
 import sqlite3
-import urllib
 
 # pip install -r requirements.txt
 from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError
+from requests.utils import quote
 import requests
 
 Resource = namedtuple('Resource', ['filename', 'url'])
@@ -77,7 +82,7 @@ DOCS = [
     Doc('redis2-nginx-module', build_url_from_repo_name('redis2-nginx-module'),
         ['directives']),
     Doc('memc-nginx-module', build_url_from_repo_name('memc-nginx-module'),
-        ['memcached_commands_supported', 'directives']),
+        ['memcached-commands-supported', 'directives']),
     Doc('rds-csv-nginx-module',
         build_url_from_repo_name('rds-csv-nginx-module', 'README.md'),
         ['directives']),
@@ -91,7 +96,7 @@ DOCS = [
 ]
 
 
-def get_file_from_url(url):
+def get_text_from_url(url):
     res = requests.get(url)
     if res.status_code in (200, 304):
         return res.text
@@ -107,6 +112,8 @@ def get_type(section):
         return 'Method'
     elif section == 'variables':
         return 'Variable'
+    elif section == 'memcached-commands-supported':
+        return 'Command'
     else:
         return 'Function'
 
@@ -116,19 +123,21 @@ def parse_doc_from_html(html, metadata):
     Parse the document part of html page according to the metadata.
     Return:
     1. a list of Entries
-    2. a list of Resources
+    2. a set of Resources
     3. a html snippet with anchor added, resource urls rewritten, useless parts removed
     """
     soup = BeautifulSoup(html, 'html.parser')
 
     # rewrite all css url to './Assets/' and extract them as list of Resources
-    resources = []
-    rewritten_head = ''
-    for stylesheet in soup.findAll('link', rel='stylesheet'):
-        css = stylesheet['href'].rpartition('/')[-1]
-        resources.append(Resource(filename=css, url=stylesheet['href']))
-        stylesheet['href'] = css
-        rewritten_head += str(stylesheet)
+    resources = set()
+    rewritten_head = '<title>%s</title>\n' % metadata.name
+    for css in soup.findAll('link', rel='stylesheet'):
+        link = css['href'].rpartition('/')[-1]
+        resources.add(Resource(filename=link, url=css['href']))
+        new_css = soup.new_tag('link')
+        new_css['rel'] = 'stylesheet'
+        new_css['href'] = link
+        rewritten_head += str(new_css)
 
     entries = []
     readme = soup.find(id='readme')
@@ -142,23 +151,25 @@ def parse_doc_from_html(html, metadata):
             if tag.name == section_header.name:
                 break
             if tag.name == entry_header:
-                # use '#' to separate api name and its module
-                entry_name = namespace + '#' + next(tag.stripped_strings)
+                api_name = next(tag.stripped_strings)
                 tag_anchor = next(tag.children)
                 entry_path = base_path + tag_anchor['href']
                 entries.append(Entry(
-                    name=entry_name, type=section_type, path=entry_path))
+                    name=api_name, type=section_type, path=entry_path))
                 # insert an anchor to support table of contents
                 anchor = soup.new_tag('a')
-                anchor['name'] = '//apple_ref/%s/%s' % (
-                    section_type, urllib.quote_plus(entry_name))
+                anchor['name'] = '//apple_ref/cpp/%s/%s' % (
+                    section_type, quote(api_name))
                 anchor['class'] = 'dashAnchor'
                 tag_anchor.insert_before(anchor)
 
     if metadata.name == 'lua-resty-websocket':
         for section in metadata.sections:
+            section_path = section.replace('.', '')
+            entries.append(Entry(
+                name=section, type='Class', path=base_path + '#' + section_path))
             section_header = soup.find(
-                id=('user-content-' + section.replace('.', ''))).parent
+                id=('user-content-' + section_path)).parent
             handle_each_section(section_header, 'Method', 'h4', section)
     else:
         for section in metadata.sections:
@@ -169,34 +180,44 @@ def parse_doc_from_html(html, metadata):
             handle_each_section(
                 section_header, section_type, entry_header, metadata.name)
 
+    # remove user-content- to enable fragment href
+    start_from = len('user-content-')
+    for anchor in soup.findAll('a'):
+        if 'id' in anchor.attrs:
+            anchor['id'] = anchor['id'][start_from:]
+
     # support online redirect
-    comment = '!-- Online page at %s -->' % metadata.url
-    doc = """
-        <!DOCTYPE html>
-        <html lang='en'>%s
+    comment = '<!-- Online page at %s -->' % metadata.url
+    doc = """<!doctype html>
+        <html>%s
           <head>
-            <meta charset='UTF-8'>
             %s
           </head>
           <body>
             %s
           </body>
-        </html>
-    """ % (comment, rewritten_head, readme)
-    print(entries)
+        </html>""" % (comment, rewritten_head, readme)
     return entries, resources, doc
 
 
+def download_resources(resources,
+                       path='OpenResty.docset/Contents/Resources/Documents/'):
+    for resource in resources:
+        resource_path = path + resource.filename
+        with open(resource_path, 'w') as f:
+            f.write(get_text_from_url(resource.url))
+
+
 def build_docset_structure():
-    docset = 'OpenResty.docset'
-    path = '%s/Contents/Resources/Documents' % docset
-    if not os.path.isdir(path):
-        os.makedirs(path)
-    write_info_plist_to('%s/Contents/Info.plist' % docset)
-    write_sql_schema_to('%s/Contents/Resources/docSet.dsidx' % docset)
+    path = 'OpenResty.docset/Contents/Resources/Documents'
+    if os.path.isdir('OpenResty.docset'):
+        rmtree('OpenResty.docset')
+    os.makedirs(path)
+    write_info_plist()
+    write_sql_schema()
 
 
-def write_info_plist_to(fn):
+def write_info_plist(fn='OpenResty.docset/Contents/Info.plist'):
     content = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -219,7 +240,7 @@ def write_info_plist_to(fn):
         f.write(content)
 
 
-def write_sql_schema_to(fn):
+def write_sql_schema(fn='OpenResty.docset/Contents/Resources/docSet.dsidx'):
     db = sqlite3.connect(fn)
     cur = db.cursor()
     try:
@@ -231,12 +252,72 @@ def write_sql_schema_to(fn):
     db.commit()
     db.close()
 
+
+def insert_entries(entries,
+                   fn='OpenResty.docset/Contents/Resources/docSet.dsidx'):
+    db = sqlite3.connect(fn)
+    cur = db.cursor()
+    values = ["('%s', '%s', '%s')" % (entry.name, entry.type, entry.path) for entry in entries]
+    data = ','.join(values)
+    # need sqlite 3.7+ to support batch insert
+    cur.execute("INSERT INTO searchIndex(name, type, path) VALUES %s" % data)
+    db.commit()
+    db.close()
+
+
+class Worker(Thread):
+    lock = Lock()
+    path = 'OpenResty.docset/Contents/Resources/Documents/'
+
+    def create_logger():
+        logger = logging.getLogger(__name__.split('.')[0])
+        logger.setLevel(getattr(logging, 'INFO'))
+        FORMAT = '[%(levelname)s] %(threadName)s %(message)s'
+        formatter = logging.Formatter(fmt=FORMAT)
+        handler = logging.StreamHandler(stdout)
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        return logger
+    logger = create_logger()
+
+    @classmethod
+    def info(cls, *args):
+        cls.logger.info(*args)
+
+    def __init__(self):
+        super(Worker, self).__init__()
+        self.resources = set()
+        self.entries = []
+
+    def run(self):
+        while True:
+            with Worker.lock:
+                if len(DOCS) == 0:
+                    return
+                doc = DOCS.pop()
+            Worker.info('Download Readme of %s' % doc.name)
+            html = get_text_from_url(doc.url)
+            doc_path = Worker.path + doc.name + '.html'
+            Worker.info('Parse Readme of %s' % doc.name)
+            entries, resources, text = parse_doc_from_html(html, doc)
+            self.resources |= resources
+            self.entries.extend(entries)
+            with codecs.open(doc_path, 'w', encoding='utf-8') as f:
+                f.write(text)
+            Worker.info('Finish %s' % doc.name)
+
+
 if __name__ == '__main__':
-    # html = get_file_from_url(DOCS[-1].url)
-    # with codecs.open('/home/lzx/doc/' + DOCS[-1].name, 'w', encoding='utf-8') as f:
-        # f.write(html)
-    with codecs.open('/home/lzx/doc/' + DOCS[-1].name) as f:
-        html = f.read()
-    entries, resources, doc = parse_doc_from_html(html, DOCS[-1])
-    # print(doc)
-    # build_docset_structure()
+    build_docset_structure()
+    workers = [Worker() for i in range(5)]
+    for worker in workers:
+        worker.start()
+    entries = []
+    resources = set()
+    for worker in workers:
+        worker.join()
+        entries.extend(worker.entries)
+        resources |= worker.resources
+
+    download_resources(resources)
+    insert_entries(entries)
