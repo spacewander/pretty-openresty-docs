@@ -6,12 +6,12 @@ See https://kapeli.com/docsets for how to build docset.
 """
 from __future__ import unicode_literals
 from collections import namedtuple
-from shutil import rmtree
 from sys import stdout
 from threading import Thread, Lock
 import codecs
 import logging
 import os
+import shutil
 import sqlite3
 
 # pip install -r requirements.txt
@@ -211,10 +211,11 @@ def download_resources(resources,
 def build_docset_structure():
     path = 'OpenResty.docset/Contents/Resources/Documents'
     if os.path.isdir('OpenResty.docset'):
-        rmtree('OpenResty.docset')
+        shutil.rmtree('OpenResty.docset')
     os.makedirs(path)
     write_info_plist()
     write_sql_schema()
+    copy_icons()
 
 
 def write_info_plist(fn='OpenResty.docset/Contents/Info.plist'):
@@ -251,6 +252,12 @@ def write_sql_schema(fn='OpenResty.docset/Contents/Resources/docSet.dsidx'):
     cur.execute('CREATE UNIQUE INDEX anchor ON searchIndex (name, type, path);')
     db.commit()
     db.close()
+
+
+def copy_icons(path='OpenResty.docset/'):
+    for icon in ('./icon.png', './icon@2x.png'):
+        if os.path.isfile(icon):
+            shutil.copy(icon, path)
 
 
 def insert_entries(entries,
