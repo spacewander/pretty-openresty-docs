@@ -128,7 +128,6 @@ def parse_doc_from_html(html, metadata):
     """
     soup = BeautifulSoup(html, 'html.parser')
 
-    # rewrite all css url to './Assets/' and extract them as list of Resources
     resources = set()
     rewritten_head = '<title>%s</title>\n' % metadata.name
     for css in soup.findAll('link', rel='stylesheet'):
@@ -141,7 +140,7 @@ def parse_doc_from_html(html, metadata):
 
     entries = []
     readme = soup.find(id='readme')
-    base_path = './%s.html' % metadata.name
+    base_path = '%s.html' % metadata.name
 
     def handle_each_section(section_header, section_type, entry_header, namespace):
         for tag in section_header.next_siblings:

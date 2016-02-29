@@ -1,2 +1,3 @@
 # pretty-openresty-docs
-Generate OpenResty docset(not finished yet)
+
+Generate OpenResty docset
