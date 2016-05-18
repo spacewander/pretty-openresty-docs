@@ -94,13 +94,23 @@ DOCS = [
         ['resty.websocket.server', 'resty.websocket.client',
         'resty.websocket.protocol']),
 ]
+DOC_NAMES = set(doc.name for doc in DOCS)
 
+
+def _get_from_url(url, attr):
+    retry = 0
+    while retry < 3:
+        res = requests.get(url)
+        if res.status_code in (200, 304):
+            return getattr(res, attr)
+        retry += 1
+    raise HTTPError(res)
 
 def get_text_from_url(url):
-    res = requests.get(url)
-    if res.status_code in (200, 304):
-        return res.text
-    raise HTTPError(res)
+    return _get_from_url(url, 'text')
+
+def get_binary_from_url(url):
+    return _get_from_url(url, 'content')
 
 
 def get_type(section):
@@ -137,6 +147,21 @@ def parse_doc_from_html(html, metadata):
         new_css['rel'] = 'stylesheet'
         new_css['href'] = link
         rewritten_head += str(new_css)
+    for img in soup.select('#readme img'):
+        src = metadata.name + '-' + img['src'].rpartition('/')[-1]
+        resources.add(Resource(filename=src, url=img['src']))
+        img['src'] = src
+    for link in soup.select('#readme a'):
+        if link['href'].startswith(
+            ('https://github.com/openresty/', 'http://github.com/openresty')):
+            href = link['href'].rpartition('/')[-1]
+            href, _, anchor = href.partition('#')
+            if href not in DOC_NAMES:
+                continue
+            href += '.html'
+            if anchor != 'readme':
+                href += '#' + anchor
+            link['href'] = href
 
     entries = []
     readme = soup.find(id='readme')
@@ -203,8 +228,12 @@ def download_resources(resources,
                        path='OpenResty.docset/Contents/Resources/Documents/'):
     for resource in resources:
         resource_path = path + resource.filename
-        with open(resource_path, 'w') as f:
-            f.write(get_text_from_url(resource.url))
+        if resource.filename.endswith('.css'):
+            with open(resource_path, 'w') as f:
+                f.write(get_text_from_url(resource.url))
+        else: # images
+            with open(resource_path, 'wb') as f:
+                f.write(get_binary_from_url(resource.url))
 
 
 def build_docset_structure():
