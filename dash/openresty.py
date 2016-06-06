@@ -31,68 +31,74 @@ def build_url_from_repo_name(repo, readme='README.markdown'):
 # List all docs of projects distributed with OpenResty tar package.
 # Not all docs have Chinese translation, so don't consider it now.
 DOCS = [
-    Doc('lua-nginx-module', build_url_from_repo_name('lua-nginx-module'),
-        ['directives', 'nginx-api-for-lua']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core'),
-        ['api-implemented']),
-    Doc('lua-resty-lrucache', build_url_from_repo_name('lua-resty-lrucache'),
-        ['methods']),
-    Doc('lua-resty-upload', build_url_from_repo_name('lua-resty-upload'),
-        []),
-    Doc('lua-resty-upstream-healthcheck',
-        build_url_from_repo_name('lua-resty-upstream-healthcheck'),
-        ['methods']),
-    Doc('lua-resty-mysql', build_url_from_repo_name('lua-resty-mysql'),
-        ['methods']),
-    Doc('lua-resty-memcached', build_url_from_repo_name('lua-resty-memcached'),
-        ['methods']),
-    Doc('lua-resty-redis', build_url_from_repo_name('lua-resty-redis'),
-        ['methods']),
-    Doc('lua-resty-string', build_url_from_repo_name('lua-resty-string'), []),
-    Doc('lua-upstream-nginx-module',
-        build_url_from_repo_name('lua-upstream-nginx-module', 'README.md'),
-        ['functions']),
-    Doc('lua-redis-parser', build_url_from_repo_name('lua-redis-parser'),
-        ['functions', 'constants']),
-    Doc('echo-nginx-module', build_url_from_repo_name('echo-nginx-module'),
-        ['content-handler-directives', 'filter-directives', 'variables']),
-    Doc('xss-nginx-module',
-        build_url_from_repo_name('xss-nginx-module', 'README.md'),
-        ['directives']),
-    Doc('resty-cli', build_url_from_repo_name('resty-cli', 'README.md'),
-        []),
     Doc('array-var-nginx-module',
         build_url_from_repo_name('array-var-nginx-module', 'README.md'),
         ['directives']),
     Doc('drizzle-nginx-module',
         build_url_from_repo_name('drizzle-nginx-module'),
         ['directives', 'variables']),
+    Doc('echo-nginx-module', build_url_from_repo_name('echo-nginx-module'),
+        ['content-handler-directives', 'filter-directives', 'variables']),
+    Doc('encrypted-session-nginx-module',
+        build_url_from_repo_name('encrypted-session-nginx-module', 'README.md'),
+        ['directives']),
     Doc('headers-more-nginx-module',
         build_url_from_repo_name('headers-more-nginx-module'),
         ['directives']),
-    Doc('srcache-nginx-module',
-        build_url_from_repo_name('srcache-nginx-module'),
-        ['directives', 'variables']),
-    Doc('encrypted-session-nginx-module',
-        build_url_from_repo_name('encrypted-session-nginx-module', 'README.md'),
+    Doc('lua-nginx-module', build_url_from_repo_name('lua-nginx-module'),
+        ['directives', 'nginx-api-for-lua']),
+    Doc('lua-redis-parser', build_url_from_repo_name('lua-redis-parser'),
+        ['functions', 'constants']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core'),
+        ['api-implemented']),
+    Doc('lua-resty-dns', build_url_from_repo_name('lua-resty-dns'),
+        ['methods', 'constants']),
+    Doc('lua-resty-lock', build_url_from_repo_name('lua-resty-lock'),
+        ['methods']),
+    Doc('lua-resty-lrucache', build_url_from_repo_name('lua-resty-lrucache'),
+        ['methods']),
+    Doc('lua-resty-memcached', build_url_from_repo_name('lua-resty-memcached'),
+        ['methods']),
+    Doc('lua-resty-mysql', build_url_from_repo_name('lua-resty-mysql'),
+        ['methods']),
+    Doc('lua-resty-redis', build_url_from_repo_name('lua-resty-redis'),
+        ['methods']),
+    Doc('lua-resty-string', build_url_from_repo_name('lua-resty-string'), []),
+    Doc('lua-resty-upload', build_url_from_repo_name('lua-resty-upload'),
+        []),
+    Doc('lua-resty-upstream-healthcheck',
+        build_url_from_repo_name('lua-resty-upstream-healthcheck'),
+        ['methods']),
+    Doc('lua-resty-websocket', build_url_from_repo_name('lua-resty-websocket'),
+        ['resty.websocket.server', 'resty.websocket.client',
+        'resty.websocket.protocol']),
+    Doc('lua-upstream-nginx-module',
+        build_url_from_repo_name('lua-upstream-nginx-module', 'README.md'),
+        ['functions']),
+    Doc('memc-nginx-module', build_url_from_repo_name('memc-nginx-module'),
+        ['memcached-commands-supported', 'directives']),
+    Doc('ngx_postgres',
+        'https://github.com/FRiCKLE/ngx_postgres/blob/master/README.md',
+        ['configuration-directives', 'configuration-variables']),
+    Doc('rds-csv-nginx-module',
+        build_url_from_repo_name('rds-csv-nginx-module', 'README.md'),
         ['directives']),
     Doc('rds-json-nginx-module',
         build_url_from_repo_name('rds-json-nginx-module', 'README.md'),
         ['directives']),
     Doc('redis2-nginx-module', build_url_from_repo_name('redis2-nginx-module'),
         ['directives']),
-    Doc('memc-nginx-module', build_url_from_repo_name('memc-nginx-module'),
-        ['memcached-commands-supported', 'directives']),
-    Doc('rds-csv-nginx-module',
-        build_url_from_repo_name('rds-csv-nginx-module', 'README.md'),
-        ['directives']),
+    Doc('resty-cli', build_url_from_repo_name('resty-cli', 'README.md'),
+        []),
     Doc('set-misc-nginx-module',
         build_url_from_repo_name('set-misc-nginx-module'),
         ['directives']),
-    # special cases below
-    Doc('lua-resty-websocket', build_url_from_repo_name('lua-resty-websocket'),
-        ['resty.websocket.server', 'resty.websocket.client',
-        'resty.websocket.protocol']),
+    Doc('srcache-nginx-module',
+        build_url_from_repo_name('srcache-nginx-module'),
+        ['directives', 'variables']),
+    Doc('xss-nginx-module',
+        build_url_from_repo_name('xss-nginx-module', 'README.md'),
+        ['directives']),
 ]
 DOC_NAMES = set(doc.name for doc in DOCS)
 
@@ -288,6 +294,20 @@ def copy_icons(path='OpenResty.docset/'):
             shutil.copy(icon, path)
 
 
+def mark_duplicate_entries(entries):
+    entry_used_time = {}
+    for entry in entries:
+        entry_used_time[entry.name] = entry_used_time.setdefault(entry.name, 0) + 1
+    new_entries = []
+    for entry in entries:
+        if entry_used_time[entry.name] > 1:
+            name = entry.name + '(%s)' % entry.path[:entry.path.find('.html')]
+        else:
+            name = entry.name
+        new_entries.append(Entry(name=name, type=entry.type, path=entry.path))
+    return new_entries
+
+
 def insert_entries(entries,
                    fn='OpenResty.docset/Contents/Resources/docSet.dsidx'):
     db = sqlite3.connect(fn)
@@ -354,16 +374,4 @@ if __name__ == '__main__':
         entries.extend(worker.entries)
         resources |= worker.resources
     download_resources(resources)
-
-    # mark entries have the same names
-    entry_used_time = {}
-    for entry in entries:
-        entry_used_time[entry.name] = entry_used_time.setdefault(entry.name, 0) + 1
-    new_entries = []
-    for entry in entries:
-        if entry_used_time[entry.name] > 1:
-            name = entry.name + '(%s)' % entry.path[2:entry.path.find('.html')]
-        else:
-            name = entry.name
-        new_entries.append(Entry(name=name, type=entry.type, path=entry.path))
-    insert_entries(new_entries)
+    insert_entries(mark_duplicate_entries(entries))
