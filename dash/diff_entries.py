@@ -2,6 +2,7 @@
 # coding: utf-8
 
 # Diff entries from two sqlite3 db
+import os
 import sqlite3
 import sys
 
@@ -26,22 +27,25 @@ def print_merged_entries(entries):
     if len(entries) == 0:
         return
     entries = sorted(entries, key=lambda x: x[2])
-    namespace_entries = []
-    current_namespace = entries[0][2].split('#')[0][:-5]
-    for i in entries:
-        namespace, entry = i[2].split('#')
-        namespace = namespace[:-5] # remove .html
-        namespace_entries.append(entry)
-        if namespace != current_namespace:
-            print("%s: %d" % (current_namespace, len(namespace_entries)))
-            for e in namespace_entries:
-                print('\t%s' % e)
+    entries_in_previous_doc = []
+    current_doc = entries[0][2].split('#')[0]
+    start = 0
+    for i in range(0, len(entries)):
+        doc_name, _ = entries[i][2].split('#')
+        if doc_name != current_doc:
+            entries_in_previous_doc = entries[start:i]
+            start = i
+            print("%s: %d" % (
+                os.path.splitext(current_doc)[0], len(entries_in_previous_doc)))
+            for e in entries_in_previous_doc:
+                print('\t%s' % e[0])
             print('')
-            current_namespace = namespace
-            namespace_entries = []
-    print("%s: %d" % (current_namespace, len(namespace_entries)))
-    for e in namespace_entries:
-        print('\t%s' % e)
+            current_doc = doc_name
+    entries_in_previous_doc = entries[start:]
+    print("%s: %d" % (
+        os.path.splitext(current_doc)[0], len(entries_in_previous_doc)))
+    for e in entries_in_previous_doc:
+        print('\t%s' % e[0])
     print('')
 
 if __name__ == '__main__':
