@@ -313,10 +313,11 @@ def insert_entries(entries,
     db = sqlite3.connect(fn)
     cur = db.cursor()
     values = ["('%s', '%s', '%s')" % (entry.name, entry.type, entry.path) for entry in entries]
-    data = ','.join(values)
-    # need sqlite 3.7+ to support batch insert
-    cur.execute("INSERT INTO searchIndex(name, type, path) VALUES %s" % data)
-    db.commit()
+    for step in range(0, len(values), 500):
+        data = ','.join(values[step:step+500])
+        # need sqlite 3.7+ to support batch insert
+        cur.execute("INSERT INTO searchIndex(name, type, path) VALUES %s" % data)
+        db.commit()
     db.close()
 
 
