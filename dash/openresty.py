@@ -222,6 +222,16 @@ def parse_doc_from_html(html, metadata):
         <html>%s
           <head>
             %s
+            <style>
+            body {
+                width: 100%%;
+                min-width: 100%%;
+            }
+            .readme .markdown-body, .readme .plain {
+                padding: 10px;
+            }
+            #readme { width: 100%%; }
+            </style>
           </head>
           <body>
             %s
