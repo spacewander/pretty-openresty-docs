@@ -24,29 +24,34 @@ def diff(old, new):
     print_merged_entries(rem)
 
 def print_merged_entries(entries):
-    if len(entries) == 0:
+    size = len(entries)
+    if size == 0:
         return
     entries = sorted(entries, key=lambda x: x[2])
     entries_in_previous_doc = []
     current_doc = entries[0][2].split('#')[0]
     start = 0
-    for i in range(0, len(entries)):
-        doc_name, _ = entries[i][2].split('#')
-        if doc_name != current_doc:
+    for i in range(size + 1):
+        if i < size:
+            doc_name, _ = entries[i][2].split('#')
+            # Only print when new doc is met or the last doc is met
+            if doc_name == current_doc:
+                continue
             entries_in_previous_doc = entries[start:i]
             start = i
-            print("%s: %d" % (
-                os.path.splitext(current_doc)[0], len(entries_in_previous_doc)))
-            for e in entries_in_previous_doc:
-                print('\t%s' % e[0])
-            print('')
-            current_doc = doc_name
-    entries_in_previous_doc = entries[start:]
-    print("%s: %d" % (
-        os.path.splitext(current_doc)[0], len(entries_in_previous_doc)))
-    for e in entries_in_previous_doc:
-        print('\t%s' % e[0])
-    print('')
+        else:
+            entries_in_previous_doc = entries[start:]
+        print("%s: %d" % (
+            os.path.splitext(current_doc)[0], len(entries_in_previous_doc)))
+        max_len = [0, 0, 0]
+        for entry in entries_in_previous_doc:
+            for j, e in enumerate(entry):
+                max_len[j] = max(max_len[j], len(e))
+        format_str = '\t' + '\t'.join(('%%-%ds' % length) for length in max_len)
+        for entry in entries_in_previous_doc:
+            print(format_str % entry)
+        print('')
+        current_doc = doc_name
 
 if __name__ == '__main__':
     argc = len(sys.argv)
