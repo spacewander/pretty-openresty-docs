@@ -4,7 +4,7 @@
 Build dash docset for OpenResty.
 See https://kapeli.com/docsets for how to build docset.
 """
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 from collections import namedtuple
 from sys import stdout
 from threading import Thread, Lock
@@ -13,6 +13,8 @@ import logging
 import os
 import shutil
 import sqlite3
+import sys
+import traceback
 
 # pip install -r requirements.txt
 from bs4 import BeautifulSoup
@@ -22,7 +24,20 @@ import requests
 
 Resource = namedtuple('Resource', ['filename', 'url'])
 Entry = namedtuple('Entry', ['name', 'type', 'path'])
-Doc = namedtuple('Doc', ['name', 'url', 'sections'])
+
+
+class Doc(object):
+    def __init__(self, name, url, sections):
+        self.name = name
+        self.url = url
+        self.sections = sections
+        doc = url.rsplit('/', 1)[-1]
+        name = os.path.splitext(doc)[0]
+        name = name.lower()
+        if name != 'readme':
+            self.module = name
+        else:
+            self.module = None
 
 
 def build_url_from_repo_name(repo, readme='README.markdown'):
@@ -45,14 +60,38 @@ DOCS = [
     Doc('headers-more-nginx-module',
         build_url_from_repo_name('headers-more-nginx-module'),
         ['directives']),
+    Doc('lua-cjson', build_url_from_repo_name('lua-cjson', 'README.md'), ['additions']),
     Doc('lua-nginx-module', build_url_from_repo_name('lua-nginx-module'),
         ['directives', 'nginx-api-for-lua']),
     Doc('lua-redis-parser', build_url_from_repo_name('lua-redis-parser'),
         ['functions', 'constants']),
     Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core'),
         ['api-implemented']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/re.md'),
+        ['methods']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl.md'),
+        ['methods']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/ocsp.md'),
+        ['methods']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/process.md'),
+        ['methods']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl/session.md'),
+        ['methods']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/balancer.md'),
+        ['methods']),
+    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/semaphore.md'),
+        ['methods']),
     Doc('lua-resty-dns', build_url_from_repo_name('lua-resty-dns'),
         ['methods', 'constants']),
+    Doc('lua-resty-limit-traffic',
+        build_url_from_repo_name('lua-resty-limit-traffic', 'lib/resty/limit/conn.md'),
+        ['methods']),
+    Doc('lua-resty-limit-traffic',
+        build_url_from_repo_name('lua-resty-limit-traffic', 'lib/resty/limit/req.md'),
+        ['methods']),
+    Doc('lua-resty-limit-traffic',
+        build_url_from_repo_name('lua-resty-limit-traffic', 'lib/resty/limit/traffic.md'),
+        ['methods']),
     Doc('lua-resty-lock', build_url_from_repo_name('lua-resty-lock'),
         ['methods']),
     Doc('lua-resty-lrucache', build_url_from_repo_name('lua-resty-lrucache'),
@@ -130,6 +169,8 @@ def get_type(section):
         return 'Variable'
     elif section == 'memcached-commands-supported':
         return 'Command'
+    elif section == 'additions':
+        return 'Method'
     else:
         return 'Function'
 
@@ -173,7 +214,7 @@ def parse_doc_from_html(html, metadata):
     readme = soup.find(id='readme')
     base_path = '%s.html' % metadata.name
 
-    def handle_each_section(section_header, section_type, entry_header, namespace):
+    def handle_each_section(section_header, section_type, entry_header, module=None):
         for tag in section_header.next_siblings:
             # not all siblings are tags
             if not hasattr(tag, 'name'):
@@ -182,6 +223,8 @@ def parse_doc_from_html(html, metadata):
                 break
             if tag.name == entry_header:
                 api_name = next(tag.stripped_strings)
+                if module is not None:
+                    api_name = module + ':' + api_name
                 tag_anchor = next(tag.children)
                 entry_path = base_path + tag_anchor['href']
                 entries.append(Entry(
@@ -200,7 +243,7 @@ def parse_doc_from_html(html, metadata):
                 name=section, type='Class', path=base_path + '#' + section_path))
             section_header = soup.find(
                 id=('user-content-' + section_path)).parent
-            handle_each_section(section_header, 'Method', 'h4', section)
+            handle_each_section(section_header, 'Method', 'h4')
     else:
         for section in metadata.sections:
             section_type = get_type(section)
@@ -208,7 +251,7 @@ def parse_doc_from_html(html, metadata):
             # all entries' header is one level lower than section's header
             entry_header = 'h' + str(int(section_header.name[1]) + 1)
             handle_each_section(
-                section_header, section_type, entry_header, metadata.name)
+                section_header, section_type, entry_header, metadata.module)
 
     # remove user-content- to enable fragment href
     start_from = len('user-content-')
@@ -354,23 +397,32 @@ class Worker(Thread):
         super(Worker, self).__init__()
         self.resources = set()
         self.entries = []
+        self.exception = None
 
     def run(self):
-        while True:
-            with Worker.lock:
-                if len(DOCS) == 0:
-                    return
-                doc = DOCS.pop()
-            Worker.info('Download Readme of %s' % doc.name)
-            html = get_text_from_url(doc.url)
-            doc_path = Worker.path + doc.name + '.html'
-            Worker.info('Parse Readme of %s' % doc.name)
-            entries, resources, text = parse_doc_from_html(html, doc)
-            self.resources |= resources
-            self.entries.extend(entries)
-            with codecs.open(doc_path, 'w', encoding='utf-8') as f:
-                f.write(text)
-            Worker.info('Finish %s' % doc.name)
+        try:
+            while True:
+                with Worker.lock:
+                    if len(DOCS) == 0:
+                        return
+                    doc = DOCS.pop()
+                Worker.info('Download Readme of %s' % doc.name)
+                html = get_text_from_url(doc.url)
+                # here we reassign doc's name
+                if doc.module is not None:
+                    doc.name += '-' + doc.module
+                Worker.info('Parse Readme of %s' % doc.name)
+                entries, resources, text = parse_doc_from_html(html, doc)
+                self.resources |= resources
+                self.entries.extend(entries)
+                doc_path = Worker.path + doc.name + '.html'
+                with codecs.open(doc_path, 'w', encoding='utf-8') as f:
+                    f.write(text)
+                Worker.info('Finish %s' % doc.name)
+        except Exception as e:
+            message = ''.join(traceback.format_exc())
+            Worker.info('Error happened\n' + message)
+            self.exception = e
 
 
 if __name__ == '__main__':
@@ -381,7 +433,11 @@ if __name__ == '__main__':
     entries = []
     resources = set()
     for worker in workers:
-        worker.join()
+        worker.join(900)
+        if worker.exception is not None:
+            print("Some threads failed to download documents, exit with 1",
+                  file=sys.stderr)
+            sys.exit(1)
         entries.extend(worker.entries)
         resources |= worker.resources
     download_resources(resources)
