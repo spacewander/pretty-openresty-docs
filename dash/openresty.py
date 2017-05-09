@@ -158,22 +158,16 @@ def get_binary_from_url(url):
     return _get_from_url(url, 'content')
 
 
+TYPE_MAP = {
+    'constants': 'Constant',
+    'directives': 'Directive',
+    'methods': 'Method',
+    'variables': 'Variable',
+    'memcached-commands-supported': 'Command',
+    'additions': 'Method',
+}
 def get_type(section):
-    if section == 'constants':
-        return 'Constant'
-    elif section == 'directives':
-        return 'Directive'
-    elif section == 'methods':
-        return 'Method'
-    elif section == 'variables':
-        return 'Variable'
-    elif section == 'memcached-commands-supported':
-        return 'Command'
-    elif section == 'additions':
-        return 'Method'
-    else:
-        return 'Function'
-
+    return TYPE_MAP.get(section, 'Function')
 
 def parse_doc_from_html(html, metadata):
     """
