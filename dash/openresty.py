@@ -217,10 +217,10 @@ def parse_doc_from_html(html, metadata):
                 break
             if tag.name == entry_header:
                 api_name = next(tag.stripped_strings)
-                if module is not None:
-                    api_name = module + ':' + api_name
                 tag_anchor = next(tag.children)
                 entry_path = base_path + tag_anchor['href']
+                if section_type == 'Method':
+                    api_name = module + ':' + api_name
                 entries.append(Entry(
                     name=api_name, type=section_type, path=entry_path))
                 # insert an anchor to support table of contents
@@ -237,15 +237,25 @@ def parse_doc_from_html(html, metadata):
                 name=section, type='Class', path=base_path + '#' + section_path))
             section_header = soup.find(
                 id=('user-content-' + section_path)).parent
-            handle_each_section(section_header, 'Method', 'h4')
+            module = section.rsplit('.',  1)[-1]
+            if module == 'client':
+                module = 'websocket'
+            else:
+                module = 'websocket' + ':' + module
+            handle_each_section(section_header, 'Method', 'h4', module)
     else:
         for section in metadata.sections:
             section_type = get_type(section)
             section_header = soup.find(id=('user-content-' + section)).parent
             # all entries' header is one level lower than section's header
             entry_header = 'h' + str(int(section_header.name[1]) + 1)
+            if metadata.module is None:
+                # exact possible module name from metadata.name
+                module = metadata.name.rsplit('-', 1)[-1]
+            else:
+                module = metadata.module
             handle_each_section(
-                section_header, section_type, entry_header, metadata.module)
+                section_header, section_type, entry_header, module)
 
     # remove user-content- to enable fragment href
     start_from = len('user-content-')
