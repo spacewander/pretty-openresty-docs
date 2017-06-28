@@ -6,6 +6,7 @@ import os
 import sqlite3
 import sys
 
+
 def get_entries(db_name):
     db = sqlite3.connect(db_name)
     cur = db.cursor()
@@ -15,6 +16,7 @@ def get_entries(db_name):
     db.close()
     return set(entries)
 
+
 def diff(old, new):
     add = new - old
     rem = old - new
@@ -22,6 +24,7 @@ def diff(old, new):
     print_merged_entries(add)
     print("Removed: %d" % len(rem))
     print_merged_entries(rem)
+
 
 def print_merged_entries(entries):
     size = len(entries)
@@ -41,17 +44,19 @@ def print_merged_entries(entries):
             start = i
         else:
             entries_in_previous_doc = entries[start:]
-        print("%s: %d" % (
-            os.path.splitext(current_doc)[0], len(entries_in_previous_doc)))
+        print("%s: %d" % (os.path.splitext(current_doc)[0],
+                          len(entries_in_previous_doc)))
         max_len = [0, 0, 0]
         for entry in entries_in_previous_doc:
             for j, e in enumerate(entry):
                 max_len[j] = max(max_len[j], len(e))
-        format_str = '\t' + '\t'.join(('%%-%ds' % length) for length in max_len)
+        format_str = '\t' + '\t'.join(('%%-%ds' % length)
+                                      for length in max_len)
         for entry in entries_in_previous_doc:
             print(format_str % entry)
         print('')
         current_doc = doc_name
+
 
 if __name__ == '__main__':
     argc = len(sys.argv)

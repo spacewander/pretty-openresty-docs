@@ -12,15 +12,21 @@ import codecs
 import logging
 import os
 import shutil
+import signal
 import sqlite3
 import sys
 import traceback
 
 # pip install -r requirements.txt
-from bs4 import BeautifulSoup
-from requests.exceptions import HTTPError
-from requests.utils import quote
-import requests
+try:
+    from bs4 import BeautifulSoup
+    from requests.exceptions import HTTPError
+    from requests.utils import quote
+    import requests
+except ImportError:
+    print("Several third-party library not found" +
+          "run `pip install -r requirements.txt` to install it")
+    sys.exit(1)
 
 Resource = namedtuple('Resource', ['filename', 'url'])
 Entry = namedtuple('Entry', ['name', 'type', 'path'])
@@ -43,6 +49,7 @@ class Doc(object):
 def build_url_from_repo_name(repo, readme='README.markdown'):
     return 'https://github.com/openresty/%s/blob/master/%s' % (repo, readme)
 
+
 # List all docs of projects distributed with OpenResty tar package.
 # Not all docs have Chinese translation, so don't consider it now.
 DOCS = [
@@ -52,69 +59,81 @@ DOCS = [
     Doc('drizzle-nginx-module',
         build_url_from_repo_name('drizzle-nginx-module'),
         ['directives', 'variables']),
-    Doc('echo-nginx-module', build_url_from_repo_name('echo-nginx-module'),
+    Doc('echo-nginx-module',
+        build_url_from_repo_name('echo-nginx-module'),
         ['content-handler-directives', 'filter-directives', 'variables']),
     Doc('encrypted-session-nginx-module',
-        build_url_from_repo_name('encrypted-session-nginx-module', 'README.md'),
-        ['directives']),
+        build_url_from_repo_name('encrypted-session-nginx-module',
+                                 'README.md'), ['directives']),
     Doc('headers-more-nginx-module',
-        build_url_from_repo_name('headers-more-nginx-module'),
-        ['directives']),
-    Doc('lua-cjson', build_url_from_repo_name('lua-cjson', 'README.md'), ['additions']),
-    Doc('lua-nginx-module', build_url_from_repo_name('lua-nginx-module'),
+        build_url_from_repo_name('headers-more-nginx-module'), ['directives']),
+    Doc('lua-cjson',
+        build_url_from_repo_name('lua-cjson', 'README.md'), ['additions']),
+    Doc('lua-nginx-module',
+        build_url_from_repo_name('lua-nginx-module'),
         ['directives', 'nginx-api-for-lua']),
-    Doc('lua-redis-parser', build_url_from_repo_name('lua-redis-parser'),
+    Doc('lua-redis-parser',
+        build_url_from_repo_name('lua-redis-parser'),
         ['functions', 'constants']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core'),
-        ['api-implemented']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/re.md'),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core'), ['api-implemented']),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/re.md'),
         ['methods']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl.md'),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl.md'),
         ['methods']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/ocsp.md'),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/ocsp.md'),
         ['methods']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/process.md'),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/process.md'),
+        ['functions']),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl/session.md'),
         ['methods']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl/session.md'),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/balancer.md'),
         ['methods']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/balancer.md'),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/semaphore.md'),
         ['methods']),
-    Doc('lua-resty-core', build_url_from_repo_name('lua-resty-core', 'lib/ngx/semaphore.md'),
-        ['methods']),
-    Doc('lua-resty-dns', build_url_from_repo_name('lua-resty-dns'),
-        ['methods', 'constants']),
+    Doc('lua-resty-dns',
+        build_url_from_repo_name('lua-resty-dns'), ['methods', 'constants']),
     Doc('lua-resty-limit-traffic',
-        build_url_from_repo_name('lua-resty-limit-traffic', 'lib/resty/limit/conn.md'),
-        ['methods']),
+        build_url_from_repo_name('lua-resty-limit-traffic',
+                                 'lib/resty/limit/conn.md'), ['methods']),
     Doc('lua-resty-limit-traffic',
-        build_url_from_repo_name('lua-resty-limit-traffic', 'lib/resty/limit/req.md'),
-        ['methods']),
+        build_url_from_repo_name('lua-resty-limit-traffic',
+                                 'lib/resty/limit/req.md'), ['methods']),
     Doc('lua-resty-limit-traffic',
-        build_url_from_repo_name('lua-resty-limit-traffic', 'lib/resty/limit/traffic.md'),
-        ['methods']),
-    Doc('lua-resty-lock', build_url_from_repo_name('lua-resty-lock'),
-        ['methods']),
-    Doc('lua-resty-lrucache', build_url_from_repo_name('lua-resty-lrucache'),
-        ['methods']),
-    Doc('lua-resty-memcached', build_url_from_repo_name('lua-resty-memcached'),
-        ['methods']),
-    Doc('lua-resty-mysql', build_url_from_repo_name('lua-resty-mysql'),
-        ['methods']),
-    Doc('lua-resty-redis', build_url_from_repo_name('lua-resty-redis'),
-        ['methods']),
+        build_url_from_repo_name('lua-resty-limit-traffic',
+                                 'lib/resty/limit/traffic.md'), ['methods']),
+    Doc('lua-resty-lock',
+        build_url_from_repo_name('lua-resty-lock'), ['methods']),
+    Doc('lua-resty-lrucache',
+        build_url_from_repo_name('lua-resty-lrucache'), ['methods']),
+    Doc('lua-resty-memcached',
+        build_url_from_repo_name('lua-resty-memcached'), ['methods']),
+    Doc('lua-resty-mysql',
+        build_url_from_repo_name('lua-resty-mysql'), ['methods']),
+    Doc('lua-resty-redis',
+        build_url_from_repo_name('lua-resty-redis'), ['methods']),
     Doc('lua-resty-string', build_url_from_repo_name('lua-resty-string'), []),
-    Doc('lua-resty-upload', build_url_from_repo_name('lua-resty-upload'),
-        []),
+    Doc('lua-resty-upload', build_url_from_repo_name('lua-resty-upload'), []),
     Doc('lua-resty-upstream-healthcheck',
         build_url_from_repo_name('lua-resty-upstream-healthcheck'),
         ['methods']),
-    Doc('lua-resty-websocket', build_url_from_repo_name('lua-resty-websocket'),
-        ['resty.websocket.server', 'resty.websocket.client',
-        'resty.websocket.protocol']),
+    Doc('lua-resty-websocket',
+        build_url_from_repo_name('lua-resty-websocket'), [
+            'resty.websocket.server', 'resty.websocket.client',
+            'resty.websocket.protocol'
+        ]),
     Doc('lua-upstream-nginx-module',
         build_url_from_repo_name('lua-upstream-nginx-module', 'README.md'),
         ['functions']),
-    Doc('memc-nginx-module', build_url_from_repo_name('memc-nginx-module'),
+    Doc('memc-nginx-module',
+        build_url_from_repo_name('memc-nginx-module'),
         ['memcached-commands-supported', 'directives']),
     Doc('ngx_postgres',
         'https://github.com/FRiCKLE/ngx_postgres/blob/master/README.md',
@@ -125,13 +144,11 @@ DOCS = [
     Doc('rds-json-nginx-module',
         build_url_from_repo_name('rds-json-nginx-module', 'README.md'),
         ['directives']),
-    Doc('redis2-nginx-module', build_url_from_repo_name('redis2-nginx-module'),
-        ['directives']),
-    Doc('resty-cli', build_url_from_repo_name('resty-cli', 'README.md'),
-        []),
+    Doc('redis2-nginx-module',
+        build_url_from_repo_name('redis2-nginx-module'), ['directives']),
+    Doc('resty-cli', build_url_from_repo_name('resty-cli', 'README.md'), []),
     Doc('set-misc-nginx-module',
-        build_url_from_repo_name('set-misc-nginx-module'),
-        ['directives']),
+        build_url_from_repo_name('set-misc-nginx-module'), ['directives']),
     Doc('srcache-nginx-module',
         build_url_from_repo_name('srcache-nginx-module'),
         ['directives', 'variables']),
@@ -151,8 +168,10 @@ def _get_from_url(url, attr):
         retry += 1
     raise HTTPError(res)
 
+
 def get_text_from_url(url):
     return _get_from_url(url, 'text')
+
 
 def get_binary_from_url(url):
     return _get_from_url(url, 'content')
@@ -166,8 +185,11 @@ TYPE_MAP = {
     'memcached-commands-supported': 'Command',
     'additions': 'Method',
 }
+
+
 def get_type(section):
     return TYPE_MAP.get(section, 'Function')
+
 
 def parse_doc_from_html(html, metadata):
     """
@@ -175,7 +197,8 @@ def parse_doc_from_html(html, metadata):
     Return:
     1. a list of Entries
     2. a set of Resources
-    3. a html snippet with anchor added, resource urls rewritten, useless parts removed
+    3. a html snippet with anchor added, resource urls rewritten,
+       useless parts removed
     """
     soup = BeautifulSoup(html, 'html.parser')
 
@@ -194,7 +217,8 @@ def parse_doc_from_html(html, metadata):
         img['src'] = src
     for link in soup.select('#readme a'):
         if link['href'].startswith(
-            ('https://github.com/openresty/', 'http://github.com/openresty')):
+                ('https://github.com/openresty/',
+                 'http://github.com/openresty')):
             href = link['href'].rpartition('/')[-1]
             href, _, anchor = href.partition('#')
             if href not in DOC_NAMES:
@@ -208,7 +232,10 @@ def parse_doc_from_html(html, metadata):
     readme = soup.find(id='readme')
     base_path = '%s.html' % metadata.name
 
-    def handle_each_section(section_header, section_type, entry_header, module=None):
+    def handle_each_section(section_header,
+                            section_type,
+                            entry_header,
+                            module=None):
         for tag in section_header.next_siblings:
             # not all siblings are tags
             if not hasattr(tag, 'name'):
@@ -221,23 +248,27 @@ def parse_doc_from_html(html, metadata):
                 entry_path = base_path + tag_anchor['href']
                 if section_type == 'Method':
                     api_name = module + ':' + api_name
-                entries.append(Entry(
-                    name=api_name, type=section_type, path=entry_path))
+                entries.append(
+                    Entry(
+                        name=api_name, type=section_type, path=entry_path))
                 # insert an anchor to support table of contents
                 anchor = soup.new_tag('a')
-                anchor['name'] = '//apple_ref/cpp/%s/%s' % (
-                    section_type, quote(api_name))
+                anchor['name'] = '//apple_ref/cpp/%s/%s' % (section_type,
+                                                            quote(api_name))
                 anchor['class'] = 'dashAnchor'
                 tag_anchor.insert_before(anchor)
 
     if metadata.name == 'lua-resty-websocket':
         for section in metadata.sections:
             section_path = section.replace('.', '')
-            entries.append(Entry(
-                name=section, type='Class', path=base_path + '#' + section_path))
+            entries.append(
+                Entry(
+                    name=section,
+                    type='Class',
+                    path=base_path + '#' + section_path))
             section_header = soup.find(
                 id=('user-content-' + section_path)).parent
-            module = section.rsplit('.',  1)[-1]
+            module = section.rsplit('.', 1)[-1]
             if module == 'client':
                 module = 'websocket'
             else:
@@ -254,8 +285,8 @@ def parse_doc_from_html(html, metadata):
                 module = metadata.name.rsplit('-', 1)[-1]
             else:
                 module = metadata.module
-            handle_each_section(
-                section_header, section_type, entry_header, module)
+            handle_each_section(section_header, section_type, entry_header,
+                                module)
 
     # remove user-content- to enable fragment href
     start_from = len('user-content-')
@@ -294,7 +325,7 @@ def download_resources(resources,
         if resource.filename.endswith('.css'):
             with open(resource_path, 'w') as f:
                 f.write(get_text_from_url(resource.url))
-        else: # images
+        else:  # images
             with open(resource_path, 'wb') as f:
                 f.write(get_binary_from_url(resource.url))
 
@@ -339,8 +370,11 @@ def write_sql_schema(fn='OpenResty.docset/Contents/Resources/docSet.dsidx'):
         cur.execute('DROP TABLE searchIndex;')
     except Exception:
         pass
-    cur.execute('CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT);')
-    cur.execute('CREATE UNIQUE INDEX anchor ON searchIndex (name, type, path);')
+    cur.execute(
+        'CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT);'
+    )
+    cur.execute(
+        'CREATE UNIQUE INDEX anchor ON searchIndex (name, type, path);')
     db.commit()
     db.close()
 
@@ -354,7 +388,8 @@ def copy_icons(path='OpenResty.docset/'):
 def mark_duplicate_entries(entries):
     entry_used_time = {}
     for entry in entries:
-        entry_used_time[entry.name] = entry_used_time.setdefault(entry.name, 0) + 1
+        entry_used_time[entry.name] = entry_used_time.setdefault(entry.name,
+                                                                 0) + 1
     new_entries = []
     for entry in entries:
         if entry_used_time[entry.name] > 1:
@@ -369,28 +404,33 @@ def insert_entries(entries,
                    fn='OpenResty.docset/Contents/Resources/docSet.dsidx'):
     db = sqlite3.connect(fn)
     cur = db.cursor()
-    values = ["('%s', '%s', '%s')" % (entry.name, entry.type, entry.path) for entry in entries]
+    values = [
+        "('%s', '%s', '%s')" % (entry.name, entry.type, entry.path)
+        for entry in entries
+    ]
     for step in range(0, len(values), 500):
-        data = ','.join(values[step:step+500])
+        data = ','.join(values[step:step + 500])
         # need sqlite 3.7+ to support batch insert
-        cur.execute("INSERT INTO searchIndex(name, type, path) VALUES %s" % data)
+        cur.execute("INSERT INTO searchIndex(name, type, path) VALUES %s" %
+                    data)
         db.commit()
     db.close()
+
+
+def create_logger():
+    logger = logging.getLogger(__name__.split('.')[0])
+    logger.setLevel(getattr(logging, 'INFO'))
+    FORMAT = '[%(levelname)s] %(threadName)s %(message)s'
+    formatter = logging.Formatter(fmt=FORMAT)
+    handler = logging.StreamHandler(stdout)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
 
 
 class Worker(Thread):
     lock = Lock()
     path = 'OpenResty.docset/Contents/Resources/Documents/'
-
-    def create_logger():
-        logger = logging.getLogger(__name__.split('.')[0])
-        logger.setLevel(getattr(logging, 'INFO'))
-        FORMAT = '[%(levelname)s] %(threadName)s %(message)s'
-        formatter = logging.Formatter(fmt=FORMAT)
-        handler = logging.StreamHandler(stdout)
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
     logger = create_logger()
 
     @classmethod
@@ -429,18 +469,25 @@ class Worker(Thread):
             self.exception = e
 
 
+def interrupt_handler(*args):
+    sys.exit(0)
+
+
 if __name__ == '__main__':
     build_docset_structure()
+    signal.signal(signal.SIGINT, interrupt_handler)
     workers = [Worker() for i in range(5)]
     for worker in workers:
+        worker.daemon = True
         worker.start()
     entries = []
     resources = set()
     for worker in workers:
         worker.join(900)
         if worker.exception is not None:
-            print("Some threads failed to download documents, exit with 1",
-                  file=sys.stderr)
+            print(
+                "Some threads failed to download documents, exit with 1",
+                file=sys.stderr)
             sys.exit(1)
         entries.extend(worker.entries)
         resources |= worker.resources
