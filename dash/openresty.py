@@ -24,8 +24,8 @@ try:
     from requests.utils import quote
     import requests
 except ImportError:
-    print("Several third-party library not found" +
-          "run `pip install -r requirements.txt` to install it")
+    print("Several third-party libraries not found" +
+          "run `pip install -r requirements.txt` to install them")
     sys.exit(1)
 
 Resource = namedtuple('Resource', ['filename', 'url'])
@@ -51,7 +51,6 @@ def build_url_from_repo_name(repo, readme='README.markdown'):
 
 
 # List all docs of projects distributed with OpenResty tar package.
-# Not all docs have Chinese translation, so don't consider it now.
 DOCS = [
     Doc('array-var-nginx-module',
         build_url_from_repo_name('array-var-nginx-module', 'README.md'),
@@ -89,6 +88,9 @@ DOCS = [
     Doc('lua-resty-core',
         build_url_from_repo_name('lua-resty-core', 'lib/ngx/process.md'),
         ['functions']),
+    Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/errlog.md'),
+        ['methods']),
     Doc('lua-resty-core',
         build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl/session.md'),
         ['methods']),
@@ -136,7 +138,7 @@ DOCS = [
         build_url_from_repo_name('memc-nginx-module'),
         ['memcached-commands-supported', 'directives']),
     Doc('ngx_postgres',
-        'https://github.com/FRiCKLE/ngx_postgres/blob/master/README.md',
+        build_url_from_repo_name('ngx_postgres', 'README.md'),
         ['configuration-directives', 'configuration-variables']),
     Doc('rds-csv-nginx-module',
         build_url_from_repo_name('rds-csv-nginx-module', 'README.md'),
@@ -147,6 +149,7 @@ DOCS = [
     Doc('redis2-nginx-module',
         build_url_from_repo_name('redis2-nginx-module'), ['directives']),
     Doc('resty-cli', build_url_from_repo_name('resty-cli', 'README.md'), []),
+    Doc('opm', build_url_from_repo_name('opm', 'README.md'), []),
     Doc('set-misc-nginx-module',
         build_url_from_repo_name('set-misc-nginx-module'), ['directives']),
     Doc('srcache-nginx-module',
