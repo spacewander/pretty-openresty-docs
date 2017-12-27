@@ -60,13 +60,14 @@ def print_merged_entries(entries):
 
 if __name__ == '__main__':
     argc = len(sys.argv)
-    if argc == 3:
-        old = get_entries(sys.argv[1])
-        new = get_entries(sys.argv[2])
-        diff(old, new)
-    elif argc == 2:
-        entries = get_entries(sys.argv[1])
-        diff(set(), entries)
+    if (argc == 2 or argc == 3) and sys.argv[1] not in ('-h', '--help'):
+        if argc == 3:
+            old = get_entries(sys.argv[1])
+            new = get_entries(sys.argv[2])
+            diff(old, new)
+        else:
+            entries = get_entries(sys.argv[1])
+            diff(set(), entries)
     else:
         print("Diff entries with given sqlite3 db")
         print("Usage: %s [old_sqlite.db] new_sqlite.db")
