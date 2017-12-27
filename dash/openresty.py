@@ -71,6 +71,9 @@ DOCS = [
     Doc('lua-nginx-module',
         build_url_from_repo_name('lua-nginx-module'),
         ['directives', 'nginx-api-for-lua']),
+    Doc('stream-lua-nginx-module',
+        build_url_from_repo_name('stream-lua-nginx-module', 'README.md'),
+        ['directives', 'nginx-api-for-lua']),
     Doc('lua-redis-parser',
         build_url_from_repo_name('lua-redis-parser'),
         ['functions', 'constants']),
@@ -105,6 +108,9 @@ DOCS = [
     Doc('lua-resty-limit-traffic',
         build_url_from_repo_name('lua-resty-limit-traffic',
                                  'lib/resty/limit/conn.md'), ['methods']),
+    Doc('lua-resty-limit-traffic',
+        build_url_from_repo_name('lua-resty-limit-traffic',
+                                 'lib/resty/limit/count.md'), ['methods']),
     Doc('lua-resty-limit-traffic',
         build_url_from_repo_name('lua-resty-limit-traffic',
                                  'lib/resty/limit/req.md'), ['methods']),
@@ -158,6 +164,9 @@ DOCS = [
     Doc('xss-nginx-module',
         build_url_from_repo_name('xss-nginx-module', 'README.md'),
         ['directives']),
+    Doc('lua-tablepool',
+        build_url_from_repo_name('lua-tablepool', 'README.md'),
+        ['methods']),
 ]
 DOC_NAMES = set(doc.name for doc in DOCS)
 
@@ -277,6 +286,8 @@ def parse_doc_from_html(html, metadata):
             else:
                 module = 'websocket' + ':' + module
             handle_each_section(section_header, 'Method', 'h4', module)
+    # TODO need special hack for stream-lua-nginx-module, or should I change
+    # the doc style of this project?
     else:
         for section in metadata.sections:
             section_type = get_type(section)
