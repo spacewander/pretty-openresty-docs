@@ -344,7 +344,8 @@ def download_resources(resources,
         resource_path = path + resource.filename
         if resource.filename.endswith('.css'):
             with open(resource_path, 'w') as f:
-                f.write(get_text_from_url(resource.url))
+                text = get_text_from_url(resource.url)
+                f.write(text.encode('utf-8'))
         else:  # images
             with open(resource_path, 'wb') as f:
                 f.write(get_binary_from_url(resource.url))
