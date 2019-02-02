@@ -101,6 +101,9 @@ DOCS = [
         build_url_from_repo_name('lua-resty-core', 'lib/ngx/base64.md'),
         ['methods']),
     Doc('lua-resty-core',
+        build_url_from_repo_name('lua-resty-core', 'lib/ngx/pipe.md'),
+        ['methods']),
+    Doc('lua-resty-core',
         build_url_from_repo_name('lua-resty-core', 'lib/ngx/ssl/session.md'),
         ['methods']),
     Doc('lua-resty-core',
@@ -173,6 +176,12 @@ DOCS = [
     Doc('lua-tablepool',
         build_url_from_repo_name('lua-tablepool', 'README.md'),
         ['methods']),
+    Doc('lua-resty-signal',
+        build_url_from_repo_name('lua-resty-signal', 'README.md'),
+        ['functions']),
+    Doc('lua-resty-shell',
+        build_url_from_repo_name('lua-resty-shell', 'README.md'),
+        ['functions']),
 ]
 DOC_NAMES = set(doc.name for doc in DOCS)
 
@@ -465,6 +474,8 @@ class Worker(Thread):
         self.exception = None
 
     def run(self):
+        cur_url = None
+
         try:
             while True:
                 with Worker.lock:
@@ -472,7 +483,8 @@ class Worker(Thread):
                         return
                     doc = DOCS.pop()
                 Worker.info('Download Readme of %s' % doc.name)
-                html = get_text_from_url(doc.url)
+                cur_url = doc.url
+                html = get_text_from_url(cur_url)
                 # here we reassign doc's name
                 if doc.module is not None:
                     doc.name += '-' + doc.module
@@ -486,7 +498,8 @@ class Worker(Thread):
                 Worker.info('Finish %s' % doc.name)
         except Exception as e:
             message = ''.join(traceback.format_exc())
-            Worker.info('Error happened\n' + message)
+            Worker.info('Error happened when handling %s\n%s' %
+                        (cur_url, message))
             self.exception = e
 
 
